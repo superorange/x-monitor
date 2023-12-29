@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>连续抓拍照片</title>
+</head>
+<body>
+<h1>连续抓拍照片</h1>
+<button id="startCapture">开始抓拍</button>
+<div id="photoContainer"></div>
+
+<script>
+    const startButton = document.getElementById('startCapture');
+    const photoContainer = document.getElementById('photoContainer');
+    let captureInterval;
+    let captureCount = 0;
+
+    // 使用浏览器的getUserMedia API获取摄像头访问权限
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            document.body.appendChild(video);
+            video.play();
+        })
+        .catch((error) => {
+            console.error('无法访问摄像头:', error);
+        });
+
+    startButton.addEventListener('click', () => {
+        startCapture();
+    });
+
+    function startCapture() {
+        startButton.disabled = true;
+        captureCount = 0;
+        captureInterval = setInterval(() => {
+            if (captureCount >= 1) {
+                clearInterval(captureInterval);
+                startButton.disabled = false;
+            } else {
+                capturePhoto();
+                captureCount++;
+            }
+        }, 500);
+    }
+
+    function capturePhoto() {
+        const video = document.querySelector('video');
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // 将图像数据转换为Base64编码的数据
+        const imageData = canvas.toDataURL('image/jpeg');
+
+        // 创建一个Image元素以显示抓拍的照片
+        const img = document.createElement('img');
+        img.src = imageData;
+        photoContainer.appendChild(img);
+
+        // 发送图像数据到服务器
+        sendImageToServer(imageData);
+    }
+
+    function sendImageToServer(imageData) {
+        fetch('./images', {
+            method: 'POST',
+            body: JSON.stringify({ image: imageData }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('图像上传成功:', data);
+            })
+            .catch(error => {
+                console.error('图像上传失败:', error);
+            });
+    }
+</script>
+</body>
+</html>
